@@ -65,6 +65,10 @@ fn selection_release_copies_latest_position_before_deferred_paint() {
                 crate::api::schema::Method::PaneSelectionRead(params)
                     if params.cursor == crate::api::schema::PaneTextPoint { row: 0, col: 2 })
     ));
+    assert!(
+        state.selection.is_none(),
+        "copy_on_select clears visual highlight on release"
+    );
     state.compose(106, 20).expect("release frame");
     assert!(state.selection_repaint_deadline.is_none());
 }
