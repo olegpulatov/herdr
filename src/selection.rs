@@ -35,6 +35,8 @@ enum Phase {
 pub struct Selection<P = PaneId> {
     /// Which pane the selection belongs to.
     pub pane_id: P,
+    /// Focus request for this drag has appeared in a server snapshot.
+    pub(crate) focus_confirmed: bool,
     /// Anchor position in screen-buffer coordinates (row, col).
     anchor: (u32, u16),
     /// Current/final position in screen-buffer coordinates (row, col).
@@ -50,6 +52,7 @@ impl<P> Selection<P> {
         let anchor = (absolute_row_for_viewport_row(viewport_row, metrics), col);
         Self {
             pane_id,
+            focus_confirmed: false,
             anchor,
             cursor: anchor,
             phase: Phase::Anchored,
@@ -59,6 +62,7 @@ impl<P> Selection<P> {
     pub(crate) fn absolute_anchor(pane_id: P, anchor: (u32, u16)) -> Self {
         Self {
             pane_id,
+            focus_confirmed: true,
             anchor,
             cursor: anchor,
             phase: Phase::Anchored,
@@ -69,6 +73,7 @@ impl<P> Selection<P> {
         Self {
             pane_id,
             anchor,
+            focus_confirmed: true,
             cursor,
             phase: Phase::Dragging,
         }
@@ -82,6 +87,7 @@ impl<P> Selection<P> {
         };
         Self {
             pane_id,
+            focus_confirmed: true,
             anchor: (anchor_row, anchor_col),
             cursor: (cursor_row, cursor_col),
             phase: Phase::Dragging,

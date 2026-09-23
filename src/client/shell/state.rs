@@ -1438,12 +1438,15 @@ impl ClientShellState {
                 || (gesture.focus_confirmed
                     && focused_pane.is_some_and(|pane_id| pane_id != gesture.pane_id))
         } else {
-            self.selection.as_ref().is_some_and(|selection| {
-                snapshot.focused_pane_id.as_deref() != Some(selection.pane_id.as_str())
-                    || !snapshot
-                        .panes
-                        .iter()
-                        .any(|pane| pane.pane_id == selection.pane_id)
+            self.selection.as_mut().is_some_and(|selection| {
+                let focused_pane = snapshot.focused_pane_id.as_deref();
+                selection.focus_confirmed |= focused_pane == Some(selection.pane_id.as_str());
+                !snapshot
+                    .panes
+                    .iter()
+                    .any(|pane| pane.pane_id == selection.pane_id)
+                    || (selection.focus_confirmed
+                        && focused_pane.is_some_and(|pane_id| pane_id != selection.pane_id))
             })
         };
         if selection_focus_lost {

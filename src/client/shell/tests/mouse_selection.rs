@@ -70,6 +70,50 @@ fn selection_release_copies_latest_position_before_deferred_paint() {
 }
 
 #[test]
+fn drag_survives_focus_lag_but_stops_after_confirmed_focus_loss() {
+    let mut state = word_drag_state(false);
+    let mut lagging = snapshot();
+    lagging.focused_pane_id = None;
+    lagging.panes[0].focused = false;
+    state.set_snapshot(Box::new(lagging.clone()));
+
+    let down = word_drag_mouse(&mut state, MouseEventKind::Down(MouseButton::Left), 0, 1);
+    assert!(down.actions.iter().any(|action| matches!(
+        action,
+        ClientShellAction::Endpoint { request, .. }
+            if matches!(request.method, crate::api::schema::Method::PaneFocus(_))
+    )));
+    word_drag_mouse(&mut state, MouseEventKind::Drag(MouseButton::Left), 0, 4);
+    state.set_snapshot(Box::new(lagging));
+    assert!(state
+        .selection
+        .as_ref()
+        .is_some_and(crate::selection::Selection::is_visible));
+    let mut conflicting = snapshot();
+    conflicting.focused_pane_id = Some("pane_2".into());
+    conflicting.panes[0].focused = false;
+    let mut second = conflicting.panes[0].clone();
+    second.pane_id = "pane_2".into();
+    second.focused = true;
+    conflicting.panes.push(second);
+    state.set_snapshot(Box::new(conflicting));
+    assert!(!state.selection.as_ref().unwrap().focus_confirmed);
+
+    state.set_snapshot(Box::new(snapshot()));
+    assert!(state.selection.as_ref().unwrap().focus_confirmed);
+
+    let mut other = snapshot();
+    other.focused_pane_id = Some("pane_2".into());
+    other.panes[0].focused = false;
+    let mut second = other.panes[0].clone();
+    second.pane_id = "pane_2".into();
+    second.focused = true;
+    other.panes.push(second);
+    state.set_snapshot(Box::new(other));
+    assert!(state.selection.is_none());
+}
+
+#[test]
 fn ctrl_click_routes_link_activation_through_endpoint_then_client_host() {
     let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
     state.set_snapshot(Box::new(snapshot()));

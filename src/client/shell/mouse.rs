@@ -2264,6 +2264,13 @@ impl ClientShellState {
                                 mouse.column.saturating_sub(hit.inner_rect.x),
                                 hit.scroll,
                             ));
+                            if let Some(selection) = self.selection.as_mut() {
+                                selection.focus_confirmed = self
+                                    .snapshot
+                                    .as_deref()
+                                    .and_then(|snapshot| snapshot.focused_pane_id.as_deref())
+                                    == Some(selection.pane_id.as_str());
+                            }
                         }
                     }
                     self.push_endpoint_method(
