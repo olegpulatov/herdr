@@ -88,6 +88,12 @@ build:
 build:
     python scripts/package_windows_conpty.py build-local
 
+# Build and install the local release binary to Cargo's user bin directory
+[unix]
+install-local: build
+    mkdir -p "$HOME/.cargo/bin"
+    install -m 755 "${CARGO_TARGET_DIR:-target}/release/herdr" "$HOME/.cargo/bin/herdr"
+
 # Non-gating full-render scaling profile for background workspaces and active panes
 bench-render-scale:
     cargo test --release --locked --bin herdr render_scale_profile -- --ignored --nocapture --test-threads=1
