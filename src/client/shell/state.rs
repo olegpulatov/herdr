@@ -1717,13 +1717,19 @@ impl ClientShellState {
             let (Some(previous), Some(next)) = (previous, next) else {
                 return false;
             };
+            // Output only invalidates cached bounds when their rows change or cannot be compared.
+            let word_rows_changed = self.word_selection_gesture.as_ref().is_some_and(|gesture| {
+                previous.content_revision != next.content_revision
+                    && [gesture.anchor.0, gesture.cursor.0].into_iter().any(|row| {
+                        pane_surface_row_text(previous_surface, previous, row)
+                            .zip(pane_surface_row_text(&surface, next, row))
+                            .is_none_or(|(previous, next)| previous != next)
+                    })
+            });
             previous.inner_rect.width != next.inner_rect.width
                 || previous.inner_rect.height != next.inner_rect.height
                 || previous.alternate_screen_active != next.alternate_screen_active
-                // Ordinary selections are live buffer ranges. Only word gestures
-                // cache content-dependent boundaries that output can invalidate.
-                || (self.word_selection_gesture.is_some()
-                    && previous.content_revision != next.content_revision)
+                || word_rows_changed
         });
         if selection_invalidated {
             self.word_selection_gesture = None;
@@ -1884,4 +1890,35 @@ impl ClientShellState {
         self.hits = ShellHitMap::default();
         self.host_mouse_pixels = None;
     }
+}
+
+fn pane_surface_row_text(
+    surface: &PaneSurfaceFrame,
+    pane: &crate::protocol::PaneSurfacePane,
+    absolute_row: u32,
+) -> Option<String> {
+    let top_row = pane
+        .scroll
+        .map(|scroll| {
+            scroll
+                .max_offset_from_bottom
+                .saturating_sub(scroll.offset_from_bottom)
+        })
+        .unwrap_or(0);
+    let row = u64::from(absolute_row).checked_sub(top_row)?;
+    if row >= u64::from(pane.inner_rect.height) {
+        return None;
+    }
+
+    let frame_width = usize::from(surface.frame.width);
+    let frame_height = usize::from(surface.frame.height);
+    let x = usize::from(pane.inner_rect.x);
+    let y = usize::from(pane.inner_rect.y).checked_add(usize::try_from(row).ok()?)?;
+    let width = usize::from(pane.inner_rect.width);
+    if width == 0 || x.checked_add(width)? > frame_width || y >= frame_height {
+        return None;
+    }
+    let start = y.checked_mul(frame_width)?.checked_add(x)?;
+    let cells = surface.frame.cells.get(start..start.checked_add(width)?)?;
+    Some(cells.iter().map(|cell| cell.symbol.as_str()).collect())
 }

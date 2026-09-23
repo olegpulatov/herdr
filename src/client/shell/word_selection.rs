@@ -6,11 +6,10 @@ use super::*;
 pub(super) struct ClientWordSelection {
     pub(super) pane_id: String,
     pub(super) focus_confirmed: bool,
-    anchor: (u32, u16),
+    pub(super) anchor: (u32, u16),
     anchor_bounds: Option<(u16, u16)>,
-    cursor: (u32, u16),
+    pub(super) cursor: (u32, u16),
     end_col: u16,
-    content_revision: Option<u64>,
     cached_row: Option<(u32, String)>,
     pending_row: Option<u32>,
     pub(super) dragged: bool,
@@ -38,13 +37,6 @@ impl ClientShellState {
             anchor_bounds: None,
             cursor: (row, col),
             end_col: hit.inner_rect.width.saturating_sub(1),
-            content_revision: self.pane_surface.as_ref().and_then(|surface| {
-                surface
-                    .panes
-                    .iter()
-                    .find(|pane| pane.pane_id == hit.pane_id)
-                    .map(|pane| pane.content_revision)
-            }),
             cached_row: None,
             pending_row: None,
             dragged: false,
@@ -75,7 +67,7 @@ impl ClientShellState {
                 row,
                 col: gesture.end_col,
             },
-            content_revision: gesture.content_revision,
+            content_revision: None,
         };
         if !self.push_endpoint_method_with_kind(
             crate::api::schema::Method::PaneSelectionRead(params),

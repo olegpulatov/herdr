@@ -467,9 +467,13 @@ fn start_word_drag(state: &mut ClientShellState) -> String {
     word_drag_mouse(state, MouseEventKind::Up(MouseButton::Left), 0, 8);
     assert!(state.selection.is_none(), "plain clicks must not select");
     let second = word_drag_mouse(state, MouseEventKind::Down(MouseButton::Left), 0, 8);
-    assert!(second.actions.iter().any(|action| matches!(action, ClientShellAction::Endpoint { request, .. }
+    assert!(second.actions.iter().any(
+        |action| matches!(action, ClientShellAction::Endpoint { request, .. }
         if matches!(&request.method, crate::api::schema::Method::PaneSelectionRead(params)
-            if params.anchor.col == 0 && params.cursor.col == state.hits.panes[0].inner_rect.width - 1))));
+            if params.anchor.col == 0
+                && params.cursor.col == state.hits.panes[0].inner_rect.width - 1
+                && params.content_revision.is_none()))
+    ));
     word_read_id(&second.actions)
 }
 
@@ -623,6 +627,70 @@ fn double_click_drag_invalidates_cached_boundaries_outside_selected_cells() {
 }
 
 #[test]
+fn double_click_drag_survives_content_change_on_another_row() {
+    let mut state = word_drag_state(false);
+    let initial = start_word_drag(&mut state);
+    word_row_reply(&mut state, &initial, "alpha bravo charlie");
+
+    let mut changed = state.pane_surface.as_ref().unwrap().clone();
+    changed.surface_revision += 1;
+    changed.panes[0].content_revision += 2;
+    let other_row_cell = usize::from(changed.frame.width) + 14;
+    changed.frame.cells[other_row_cell].symbol = "X".into();
+    state.set_pane_surface(changed);
+
+    assert!(state.word_selection_gesture.is_some());
+    assert!(state.selection.is_some());
+    word_drag_mouse(&mut state, MouseEventKind::Drag(MouseButton::Left), 0, 14);
+    assert_eq!(
+        state.selection.as_ref().unwrap().ordered_cells(),
+        ((0, 6), (0, 18))
+    );
+}
+
+#[test]
+fn double_click_drag_invalidates_changed_cursor_row() {
+    let mut state = word_drag_state(false);
+    let anchor_read = start_word_drag(&mut state);
+    word_row_reply(&mut state, &anchor_read, "alpha bravo charlie");
+    let cursor_drag = word_drag_mouse(&mut state, MouseEventKind::Drag(MouseButton::Left), 1, 8);
+    let cursor_read = word_read_id(&cursor_drag.actions);
+    word_row_reply(&mut state, &cursor_read, "delta echo foxtrot");
+    assert!(state.selection.is_some());
+
+    let mut changed = state.pane_surface.as_ref().unwrap().clone();
+    changed.surface_revision += 1;
+    changed.panes[0].content_revision += 2;
+    let cursor_row_cell = usize::from(changed.frame.width) + 14;
+    changed.frame.cells[cursor_row_cell].symbol = "X".into();
+    state.set_pane_surface(changed);
+
+    assert!(state.word_selection_gesture.is_none());
+    assert!(state.selection.is_none());
+}
+
+#[test]
+fn double_click_drag_cancels_when_anchor_row_becomes_unobservable() {
+    let mut state = word_drag_state(false);
+    let anchor_read = start_word_drag(&mut state);
+    word_row_reply(&mut state, &anchor_read, "alpha bravo charlie");
+    assert!(state.selection.is_some());
+
+    let mut scrolled = state.pane_surface.as_ref().unwrap().clone();
+    scrolled.surface_revision += 1;
+    scrolled.panes[0].content_revision += 2;
+    scrolled.panes[0].scroll = Some(crate::protocol::PaneSurfaceScrollMetrics {
+        offset_from_bottom: 0,
+        max_offset_from_bottom: 1,
+        viewport_rows: 3,
+    });
+    state.set_pane_surface(scrolled);
+
+    assert!(state.word_selection_gesture.is_none());
+    assert!(state.selection.is_none());
+}
+
+#[test]
 fn reconnect_word_selection_tracks_content_changes() {
     for content_changed in [false, true] {
         let mut state = word_drag_state(true);
@@ -672,6 +740,7 @@ fn double_click_release_ignores_reply_after_focus_or_content_changes() {
             let mut changed = state.pane_surface.as_ref().unwrap().clone();
             changed.surface_revision += 1;
             changed.panes[0].content_revision += 2;
+            changed.frame.cells[14].symbol = " ".into();
             state.set_pane_surface(changed);
         }
         assert!(
