@@ -493,7 +493,7 @@ fn render_pane_borders(
         let focused = pane_infos
             .iter()
             .any(|info| info.is_focused && line_touches_pane(x, y, info, app.pane_gaps));
-        let symbol = line_cell_symbol(line);
+        let symbol = line_cell_symbol(line, app.pane_border_style);
         if symbol.is_empty() {
             continue;
         }
@@ -685,25 +685,28 @@ fn render_pane_border_titles(
     }
 }
 
-fn line_cell_symbol(line: LineCell) -> &'static str {
-    match (line.up, line.down, line.left, line.right) {
-        (true, true, true, true) => "┼",
-        (true, true, true, false) => "┤",
-        (true, true, false, true) => "├",
-        (true, false, true, true) => "┴",
-        (false, true, true, true) => "┬",
-        (true, true, false, false) | (true, false, false, false) | (false, true, false, false) => {
-            "│"
-        }
-        (false, false, true, true) | (false, false, true, false) | (false, false, false, true) => {
-            "─"
-        }
-        (false, true, false, true) => "┌",
-        (false, true, true, false) => "┐",
-        (true, false, false, true) => "└",
-        (true, false, true, false) => "┘",
-        _ => "",
-    }
+fn line_cell_symbol(line: LineCell, style: crate::config::PaneBorderStyle) -> &'static str {
+    use crate::config::PaneBorderStyle;
+    let symbols = match style {
+        PaneBorderStyle::Single => &["┼", "┤", "├", "┴", "┬", "│", "─", "┌", "┐", "└", "┘"],
+        PaneBorderStyle::Heavy => &["╋", "┫", "┣", "┻", "┳", "┃", "━", "┏", "┓", "┗", "┛"],
+        PaneBorderStyle::Double => &["╬", "╣", "╠", "╩", "╦", "║", "═", "╔", "╗", "╚", "╝"],
+    };
+    let index = match (line.up, line.down, line.left, line.right) {
+        (true, true, true, true) => 0,
+        (true, true, true, false) => 1,
+        (true, true, false, true) => 2,
+        (true, false, true, true) => 3,
+        (false, true, true, true) => 4,
+        (true, true, false, false) | (true, false, false, false) | (false, true, false, false) => 5,
+        (false, false, true, true) | (false, false, true, false) | (false, false, false, true) => 6,
+        (false, true, false, true) => 7,
+        (false, true, true, false) => 8,
+        (true, false, false, true) => 9,
+        (true, false, true, false) => 10,
+        _ => return "",
+    };
+    symbols[index]
 }
 
 pub(crate) fn render_selection_highlight<P: PartialEq>(
@@ -1162,15 +1165,23 @@ mod tests {
         let mut terminal =
             ratatui::Terminal::new(ratatui::backend::TestBackend::new(4, 4)).unwrap();
 
-        terminal
-            .draw(|frame| render_view_pane_borders(&app, &ws, &split_borders, frame))
-            .unwrap();
+        for (style, junction, vertical) in [
+            (crate::config::PaneBorderStyle::Single, "┼", "│"),
+            (crate::config::PaneBorderStyle::Heavy, "╋", "┃"),
+            (crate::config::PaneBorderStyle::Double, "╬", "║"),
+        ] {
+            app.pane_border_style = style;
+            terminal
+                .draw(|frame| render_view_pane_borders(&app, &ws, &split_borders, frame))
+                .unwrap();
 
-        let buffer = terminal.backend().buffer();
-        assert_eq!(buffer[(2, 2)].symbol(), "┼");
-        assert_eq!(buffer[(2, 2)].style().fg, Some(app.palette.accent));
-        assert_eq!(buffer[(2, 1)].symbol(), "│");
-        assert_eq!(buffer[(2, 1)].style().fg, Some(app.palette.accent));
+            let buffer = terminal.backend().buffer();
+            assert_eq!(buffer[(2, 2)].symbol(), junction);
+            assert_eq!(buffer[(2, 2)].style().fg, Some(app.palette.accent));
+            assert_eq!(buffer[(2, 1)].symbol(), vertical);
+            assert_eq!(buffer[(2, 1)].style().fg, Some(app.palette.accent));
+            assert_eq!(buffer[(3, 3)].style().fg, Some(app.palette.overlay0));
+        }
     }
 
     #[test]

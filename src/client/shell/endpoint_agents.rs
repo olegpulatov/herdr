@@ -16,26 +16,27 @@ pub(super) fn render_collapsed(
             buffer.set_style(rect, Style::default().bg(config.palette.active_row_bg));
         }
         let initial = row.machine_label.chars().next().unwrap_or('?');
+        let mut initial_buffer = [0; 4];
+        let initial = initial.encode_utf8(&mut initial_buffer);
+        let style = Style::default()
+            .fg(if row.stale {
+                config.palette.overlay0
+            } else {
+                status_color(row.agent.status, &config.palette)
+            })
+            .add_modifier(if row.stale {
+                Modifier::DIM
+            } else {
+                Modifier::empty()
+            });
+        let x = super::render::put_segment(buffer, rect.x, rect.y, rect.right(), initial, style);
         put_text(
             buffer,
-            rect.x,
+            x,
             rect.y,
-            rect.width,
-            &format!(
-                "{initial}{}",
-                status_icon(row.agent.status, config.status_indicators)
-            ),
-            Style::default()
-                .fg(if row.stale {
-                    config.palette.overlay0
-                } else {
-                    status_color(row.agent.status, &config.palette)
-                })
-                .add_modifier(if row.stale {
-                    Modifier::DIM
-                } else {
-                    Modifier::empty()
-                }),
+            rect.right().saturating_sub(x),
+            status_icon(row.agent.status, config),
+            style,
         );
         hits.endpoint_agents
             .push((rect, row.endpoint_id, row.agent.pane_id));

@@ -2,6 +2,8 @@ use std::{collections::BTreeSet, num::NonZeroUsize};
 
 use crossterm::event::KeyModifiers;
 use serde::{de, Deserialize, Deserializer, Serialize};
+use unicode_segmentation::UnicodeSegmentation;
+use unicode_width::UnicodeWidthStr;
 
 use super::{
     ActionKeybinds, BindingConfig, CommandKeybindConfig, IndexedKeybind, Keybinds, SidebarConfig,
@@ -114,15 +116,76 @@ pub enum StatusIndicatorStyle {
     #[default]
     Dots,
     Symbols,
+    Clear,
+    Quiet,
+    Playback,
+    Geometric,
+    Decorative,
 }
 
 impl StatusIndicatorStyle {
+    pub const ALL: [Self; 7] = [
+        Self::Dots,
+        Self::Symbols,
+        Self::Clear,
+        Self::Quiet,
+        Self::Playback,
+        Self::Geometric,
+        Self::Decorative,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Dots => "dots",
             Self::Symbols => "symbols",
+            Self::Clear => "clear",
+            Self::Quiet => "quiet",
+            Self::Playback => "playback",
+            Self::Geometric => "geometric",
+            Self::Decorative => "decorative",
         }
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct StatusSymbolsConfig {
+    #[serde(deserialize_with = "deserialize_status_symbol")]
+    pub working: Option<String>,
+    #[serde(deserialize_with = "deserialize_status_symbol")]
+    pub idle: Option<String>,
+    #[serde(deserialize_with = "deserialize_status_symbol")]
+    pub done: Option<String>,
+}
+
+fn deserialize_status_symbol<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = String::deserialize(deserializer)?;
+    if value.graphemes(true).count() != 1
+        || UnicodeWidthStr::width(value.as_str()) != 1
+        || value.chars().any(|ch| {
+            ch.is_control() || ch.is_whitespace() || matches!(ch, '\u{2800}' | '\u{ffa0}')
+        })
+        || !value
+            .chars()
+            .any(|ch| unicode_width::UnicodeWidthChar::width(ch) == Some(1))
+    {
+        return Err(de::Error::custom(
+            "ui.status_symbols values must be one visible terminal cell (no whitespace, controls, or wide/multiple glyphs)",
+        ));
+    }
+    Ok(Some(value))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PaneBorderStyle {
+    #[default]
+    Single,
+    Heavy,
+    Double,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
@@ -972,6 +1035,8 @@ pub struct UiConfig {
     /// disables them. Legacy booleans map true to auto and false to off.
     /// Default: auto.
     pub pane_borders: PaneBordersConfig,
+    /// Border line weight. Default: single.
+    pub pane_border_style: PaneBorderStyle,
     /// Draw borders along the outside edge of the pane area. Default: true.
     pub pane_outer_borders: bool,
     /// Draw interactive scrollbars beside terminal panes. Default: true.
@@ -996,8 +1061,10 @@ pub struct UiConfig {
     /// Retired setting that Herdr wrote before the workspace filter was removed.
     #[serde(rename = "agent_panel_scope")]
     _legacy_agent_panel_scope: Option<LegacyAgentPanelScopeConfig>,
-    /// Agent status indicator style. Saved values are "dots" or "symbols". Default: "dots".
+    /// Agent status indicator preset. Default: dots.
     pub status_indicators: StatusIndicatorStyle,
+    /// Optional single-cell overrides for working, idle, and done indicators.
+    pub status_symbols: StatusSymbolsConfig,
     /// Expanded sidebar row composition.
     pub sidebar: SidebarConfig,
     /// Accent color for highlights, borders, and navigation UI.
@@ -1211,6 +1278,7 @@ impl Default for UiConfig {
             prompt_new_tab_name: true,
             prompt_new_workspace_name: false,
             pane_borders: PaneBordersConfig::Auto,
+            pane_border_style: PaneBorderStyle::Single,
             pane_outer_borders: true,
             pane_scrollbars: true,
             pane_gaps: true,
@@ -1223,6 +1291,7 @@ impl Default for UiConfig {
             agent_panel_sort: AgentPanelSortConfig::Spaces,
             _legacy_agent_panel_scope: None,
             status_indicators: StatusIndicatorStyle::Dots,
+            status_symbols: StatusSymbolsConfig::default(),
             sidebar: SidebarConfig::default(),
             accent: "cyan".into(),
             toast: ToastConfig::default(),
@@ -1485,6 +1554,53 @@ status_indicators = "symbols"
         )
         .unwrap();
         assert_eq!(config.ui.status_indicators, StatusIndicatorStyle::Symbols);
+        for preset in StatusIndicatorStyle::ALL {
+            let config: Config =
+                toml::from_str(&format!("[ui]\nstatus_indicators = '{}'", preset.as_str()))
+                    .unwrap();
+            assert_eq!(config.ui.status_indicators, preset);
+        }
+        for (state, glyphs) in [
+            ("working", "↻ ⟳ ⟲ ↺ ◐ ◑ ◒ ◓ ⋯ » ▸ ▶ ≋ ∿"),
+            ("idle", "– — · ‖ ∥ ◇ □ ▫ ▱ ◦ ⊘ ∅"),
+            ("done", "✓ ✔ √ + ◆ ■ ● ★ ✦ ⊕ ⊙ ⟐"),
+        ] {
+            for glyph in glyphs.split_whitespace() {
+                let config: Config =
+                    toml::from_str(&format!("[ui.status_symbols]\n{state} = '{glyph}'")).unwrap();
+                let parsed = match state {
+                    "working" => config.ui.status_symbols.working.as_deref(),
+                    "idle" => config.ui.status_symbols.idle.as_deref(),
+                    _ => config.ui.status_symbols.done.as_deref(),
+                };
+                assert_eq!(parsed, Some(glyph));
+            }
+        }
+        for invalid in [
+            "", " ", "\t", "\n", "a\n", "\u{200b}", "\u{2800}", "\u{ffa0}", "ab", "✓✓", "中", "🙂",
+        ] {
+            let encoded = toml::Value::String(invalid.to_owned());
+            let error =
+                toml::from_str::<Config>(&format!("[ui.status_symbols]\nworking = {encoded}"))
+                    .unwrap_err();
+            assert!(
+                error.to_string().contains("one visible terminal cell"),
+                "{error}"
+            );
+        }
+        assert_eq!(
+            Config::default().ui.pane_border_style,
+            PaneBorderStyle::Single
+        );
+        for (value, expected) in [
+            ("single", PaneBorderStyle::Single),
+            ("heavy", PaneBorderStyle::Heavy),
+            ("double", PaneBorderStyle::Double),
+        ] {
+            let config: Config =
+                toml::from_str(&format!("[ui]\npane_border_style = '{value}'")).unwrap();
+            assert_eq!(config.ui.pane_border_style, expected);
+        }
     }
 
     #[test]

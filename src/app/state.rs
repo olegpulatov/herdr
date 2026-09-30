@@ -35,6 +35,12 @@ use crate::workspace::Workspace;
 pub struct Palette {
     /// Primary accent (highlight, active borders).
     pub accent: Color,
+    /// Optional focused tab background; falls back to the current accent.
+    pub tab_active_bg: Option<Color>,
+    /// Optional focused tab text foreground; falls back to contrast with the active background.
+    pub tab_active_fg: Option<Color>,
+    /// Optional inactive tab text foreground; falls back to overlay colors by label type.
+    pub tab_inactive_fg: Option<Color>,
     /// Background for the tab bar, floating panels, overlays, and modals.
     pub panel_bg: Color,
     /// Optional desktop sidebar background. Reset preserves the terminal background.
@@ -78,6 +84,9 @@ impl Palette {
     pub fn catppuccin() -> Self {
         Self {
             accent: Color::Rgb(137, 180, 250), // blue
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(24, 24, 37),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(30, 30, 46),
@@ -103,6 +112,9 @@ impl Palette {
     pub fn catppuccin_latte() -> Self {
         Self {
             accent: Color::Rgb(30, 102, 245),
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(239, 241, 245),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(230, 233, 239),
@@ -128,6 +140,9 @@ impl Palette {
     pub fn terminal() -> Self {
         Self {
             accent: Color::Blue,
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Reset,
             sidebar_bg: Color::Reset,
             active_row_bg: Color::DarkGray,
@@ -153,6 +168,9 @@ impl Palette {
     pub fn tokyo_night() -> Self {
         Self {
             accent: Color::Rgb(122, 162, 247), // blue
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(26, 27, 38),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(35, 38, 54),
@@ -178,6 +196,9 @@ impl Palette {
     pub fn tokyo_night_day() -> Self {
         Self {
             accent: Color::Rgb(46, 125, 233),
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(225, 226, 231),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(210, 211, 218),
@@ -203,6 +224,9 @@ impl Palette {
     pub fn dracula() -> Self {
         Self {
             accent: Color::Rgb(189, 147, 249), // purple
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(40, 42, 54),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(55, 60, 82),
@@ -228,6 +252,9 @@ impl Palette {
     pub fn nord() -> Self {
         Self {
             accent: Color::Rgb(136, 192, 208), // frost
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(46, 52, 64),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(67, 76, 94),
@@ -253,6 +280,9 @@ impl Palette {
     pub fn gruvbox() -> Self {
         Self {
             accent: Color::Rgb(215, 153, 33), // yellow
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(40, 40, 40),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(50, 49, 48),
@@ -278,6 +308,9 @@ impl Palette {
     pub fn gruvbox_light() -> Self {
         Self {
             accent: Color::Rgb(7, 102, 120),
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(251, 241, 199),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(242, 229, 188),
@@ -303,6 +336,9 @@ impl Palette {
     pub fn one_dark() -> Self {
         Self {
             accent: Color::Rgb(97, 175, 239), // blue
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(40, 44, 52),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(49, 54, 64),
@@ -328,6 +364,9 @@ impl Palette {
     pub fn one_light() -> Self {
         Self {
             accent: Color::Rgb(64, 120, 242),
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(250, 250, 250),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(216, 219, 226),
@@ -353,6 +392,9 @@ impl Palette {
     pub fn solarized() -> Self {
         Self {
             accent: Color::Rgb(38, 139, 210), // blue
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(0, 43, 54),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(22, 75, 87),
@@ -378,6 +420,9 @@ impl Palette {
     pub fn solarized_light() -> Self {
         Self {
             accent: Color::Rgb(38, 139, 210),
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(253, 246, 227),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(238, 232, 213),
@@ -403,6 +448,9 @@ impl Palette {
     pub fn kanagawa() -> Self {
         Self {
             accent: Color::Rgb(126, 156, 216), // blue
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(31, 31, 40),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(54, 54, 70),
@@ -428,6 +476,9 @@ impl Palette {
     pub fn kanagawa_lotus() -> Self {
         Self {
             accent: Color::Rgb(77, 105, 155),
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(242, 236, 188),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(213, 206, 163),
@@ -453,6 +504,9 @@ impl Palette {
     pub fn rose_pine() -> Self {
         Self {
             accent: Color::Rgb(196, 167, 231), // iris
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(25, 23, 36),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(38, 35, 58),
@@ -478,6 +532,9 @@ impl Palette {
     pub fn rose_pine_dawn() -> Self {
         Self {
             accent: Color::Rgb(144, 122, 169),
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(250, 244, 237),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(227, 217, 207),
@@ -503,6 +560,9 @@ impl Palette {
     pub fn vesper() -> Self {
         Self {
             accent: Color::Rgb(255, 199, 153),
+            tab_active_bg: None,
+            tab_active_fg: None,
+            tab_inactive_fg: None,
             panel_bg: Color::Rgb(26, 26, 26),
             sidebar_bg: Color::Reset,
             active_row_bg: Color::Rgb(16, 16, 16),
@@ -554,6 +614,15 @@ impl Palette {
         use crate::config::parse_color;
         if let Some(c) = &custom.accent {
             self.accent = parse_color(c);
+        }
+        if let Some(c) = &custom.tab_active_bg {
+            self.tab_active_bg = Some(parse_color(c));
+        }
+        if let Some(c) = &custom.tab_active_fg {
+            self.tab_active_fg = Some(parse_color(c));
+        }
+        if let Some(c) = &custom.tab_inactive_fg {
+            self.tab_inactive_fg = Some(parse_color(c));
         }
         if let Some(c) = &custom.panel_bg {
             self.panel_bg = parse_color(c);
@@ -616,6 +685,15 @@ impl Palette {
         use crate::config::parse_color;
         if let Some(c) = &custom.accent {
             self.accent = parse_color(c);
+        }
+        if let Some(c) = &custom.tab_active_bg {
+            self.tab_active_bg = Some(parse_color(c));
+        }
+        if let Some(c) = &custom.tab_active_fg {
+            self.tab_active_fg = Some(parse_color(c));
+        }
+        if let Some(c) = &custom.tab_inactive_fg {
+            self.tab_inactive_fg = Some(parse_color(c));
         }
         if let Some(c) = &custom.panel_bg {
             self.panel_bg = parse_color(c);
@@ -831,6 +909,7 @@ pub struct AppState {
     pub next_agent_state_change_seq: u64,
     pub confirm_close: bool,
     pub pane_borders: crate::config::PaneBordersConfig,
+    pub pane_border_style: crate::config::PaneBorderStyle,
     pub pane_outer_borders: bool,
     pub pane_scrollbars: bool,
     pub pane_gaps: bool,
@@ -1057,6 +1136,7 @@ impl AppState {
             next_agent_state_change_seq: 0,
             confirm_close: true,
             pane_borders: crate::config::PaneBordersConfig::Auto,
+            pane_border_style: crate::config::PaneBorderStyle::Single,
             pane_outer_borders: true,
             pane_scrollbars: true,
             pane_gaps: false,
@@ -1385,6 +1465,11 @@ mod tests {
                 Palette::from_name(name).is_some(),
                 "theme should resolve: {name}"
             );
+            assert_eq!(
+                Palette::from_name(name).unwrap().tab_active_bg,
+                None,
+                "built-in theme changed the focused tab background: {name}"
+            );
         }
     }
 
@@ -1451,6 +1536,9 @@ mod tests {
     #[test]
     fn custom_sidebar_colors_override_the_defaults() {
         let custom = crate::config::CustomThemeColors {
+            tab_active_bg: Some("#22324b".to_string()),
+            tab_active_fg: Some("#aaaaaa".to_string()),
+            tab_inactive_fg: Some("#666666".to_string()),
             sidebar_bg: Some("#181825".to_string()),
             active_row_bg: Some("#313244".to_string()),
             selection_bg: Some("#45475a".to_string()),
@@ -1458,9 +1546,57 @@ mod tests {
         };
         let palette = Palette::catppuccin().with_overrides(&custom);
 
+        assert_eq!(palette.tab_active_bg, Some(Color::Rgb(34, 50, 75)));
+        assert_eq!(palette.tab_active_fg, Some(Color::Rgb(170, 170, 170)));
+        assert_eq!(palette.tab_inactive_fg, Some(Color::Rgb(102, 102, 102)));
+        assert_eq!(palette.accent, Palette::catppuccin().accent);
         assert_eq!(palette.sidebar_bg, Color::Rgb(24, 24, 37));
         assert_eq!(palette.active_row_bg, Color::Rgb(49, 50, 68));
         assert_eq!(palette.selection_bg, Color::Rgb(69, 71, 90));
+
+        let light = crate::config::ModeThemeColors {
+            tab_active_bg: Some("#33445b".to_string()),
+            tab_active_fg: Some("#bbbbbb".to_string()),
+            tab_inactive_fg: Some("#777777".to_string()),
+            ..Default::default()
+        };
+        let dark = crate::config::ModeThemeColors {
+            tab_active_bg: Some("#11223b".to_string()),
+            tab_active_fg: Some("#cccccc".to_string()),
+            tab_inactive_fg: Some("#888888".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(
+            palette.clone().with_mode_overrides(&light).tab_active_bg,
+            Some(Color::Rgb(51, 68, 91))
+        );
+        assert_eq!(
+            palette.clone().with_mode_overrides(&light).tab_active_fg,
+            Some(Color::Rgb(187, 187, 187))
+        );
+        assert_eq!(
+            palette.clone().with_mode_overrides(&light).tab_inactive_fg,
+            Some(Color::Rgb(119, 119, 119))
+        );
+        assert_eq!(
+            palette.clone().with_mode_overrides(&dark).tab_active_bg,
+            Some(Color::Rgb(17, 34, 59))
+        );
+        assert_eq!(
+            palette.clone().with_mode_overrides(&dark).tab_active_fg,
+            Some(Color::Rgb(204, 204, 204))
+        );
+        assert_eq!(
+            palette.clone().with_mode_overrides(&dark).tab_inactive_fg,
+            Some(Color::Rgb(136, 136, 136))
+        );
+        assert_eq!(
+            palette
+                .clone()
+                .with_mode_overrides(&Default::default())
+                .tab_active_bg,
+            palette.tab_active_bg
+        );
     }
 
     #[test]

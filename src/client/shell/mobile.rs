@@ -11,13 +11,13 @@ use super::*;
 
 const MOBILE_BUTTON_WIDTH: u16 = 10;
 
-struct MobileItem {
-    lines: Vec<Line<'static>>,
+struct MobileItem<'a> {
+    lines: Vec<Line<'a>>,
     background: Color,
     target: Option<ClientMobileTarget>,
 }
 
-impl MobileItem {
+impl<'a> MobileItem<'a> {
     fn section(label: impl Into<String>, palette: &Palette) -> Self {
         Self {
             lines: vec![Line::from(Span::styled(
@@ -102,18 +102,32 @@ fn render_header_status(
     let tab_status = compact_tab_status(snapshot, workspace);
     let tab_width = display_width(&tab_status).saturating_add(1).min(area.width);
     let name_width = area.width.saturating_sub(tab_width);
-    put_text(
+    let status_style = Style::default()
+        .fg(status_color(workspace.agent_status, palette))
+        .bg(palette.panel_bg);
+    let x = put_segment(
         buffer,
         area.x,
         area.y,
-        name_width.min(3),
-        &format!(
-            " {} ",
-            status_icon(workspace.agent_status, config.status_indicators)
-        ),
-        Style::default()
-            .fg(status_color(workspace.agent_status, palette))
-            .bg(palette.panel_bg),
+        area.x.saturating_add(name_width.min(3)),
+        " ",
+        status_style,
+    );
+    let x = put_segment(
+        buffer,
+        x,
+        area.y,
+        area.x.saturating_add(name_width.min(3)),
+        status_icon(workspace.agent_status, config),
+        status_style,
+    );
+    put_segment(
+        buffer,
+        x,
+        area.y,
+        area.x.saturating_add(name_width.min(3)),
+        " ",
+        status_style,
     );
     put_text(
         buffer,
@@ -193,10 +207,7 @@ fn render_header_button(
             area.right().saturating_sub(1),
             area.y,
             1,
-            status_icon(
-                crate::api::schema::AgentStatus::Blocked,
-                config.status_indicators,
-            ),
+            status_icon(crate::api::schema::AgentStatus::Blocked, config),
             Style::default().fg(palette.red).bg(palette.surface0),
         );
     }
@@ -273,15 +284,35 @@ fn render_agent_summary(
         return;
     }
     if pending == 0 {
+        let style = Style::default()
+            .fg(config.palette.overlay1)
+            .bg(config.palette.panel_bg);
+        let x = put_segment(buffer, area.x, area.y, area.right(), " ", style);
+        let x = if !matches!(
+            config.status_indicators,
+            crate::config::StatusIndicatorStyle::Dots
+                | crate::config::StatusIndicatorStyle::Symbols
+        ) || config.status_symbols.idle.is_some()
+        {
+            let x = put_segment(
+                buffer,
+                x,
+                area.y,
+                area.right(),
+                status_icon(AgentStatus::Idle, config),
+                style,
+            );
+            put_segment(buffer, x, area.y, area.right(), " ", style)
+        } else {
+            x
+        };
         put_text(
             buffer,
-            area.x,
+            x,
             area.y,
-            area.width,
-            " all idle",
-            Style::default()
-                .fg(config.palette.overlay1)
-                .bg(config.palette.panel_bg),
+            area.right().saturating_sub(x),
+            "all idle",
+            style,
         );
         return;
     }
@@ -293,18 +324,19 @@ fn render_agent_summary(
         if count == 0 {
             continue;
         }
-        let symbol = match (config.status_indicators, status) {
-            (crate::config::StatusIndicatorStyle::Dots, AgentStatus::Blocked) => Some("◉"),
-            (crate::config::StatusIndicatorStyle::Dots, AgentStatus::Done) => Some("●"),
-            (crate::config::StatusIndicatorStyle::Dots, _) => None,
-            _ => Some(status_icon(status, config.status_indicators)),
-        };
-        let text = symbol.map_or_else(
-            || format!("{count} {label}"),
-            |symbol| format!("{symbol} {count} {label}"),
-        );
+        let symbol = status_symbol_override(status, &config.status_symbols).or_else(|| {
+            match (config.status_indicators, status) {
+                (crate::config::StatusIndicatorStyle::Dots, AgentStatus::Blocked) => Some("◉"),
+                (crate::config::StatusIndicatorStyle::Dots, AgentStatus::Done) => Some("●"),
+                (crate::config::StatusIndicatorStyle::Dots, _) => None,
+                _ => Some(status_icon(status, config)),
+            }
+        });
+        let text = format!("{count} {label}");
         let separator = if shown == 0 { "" } else { " · " };
-        let needed = display_width(separator).saturating_add(display_width(&text));
+        let needed = display_width(separator)
+            .saturating_add(symbol.map_or(0, |glyph| display_width(glyph).saturating_add(1)))
+            .saturating_add(display_width(&text));
         if area.right().saturating_sub(x) < needed {
             omitted = true;
             break;
@@ -329,21 +361,19 @@ fn render_agent_summary(
         } else {
             config.palette.overlay1
         };
-        x = put_segment(
-            buffer,
-            x,
-            area.y,
-            area.right(),
-            &text,
-            Style::default()
-                .fg(color)
-                .bg(config.palette.panel_bg)
-                .add_modifier(if shown == 0 {
-                    Modifier::BOLD
-                } else {
-                    Modifier::empty()
-                }),
-        );
+        let style = Style::default()
+            .fg(color)
+            .bg(config.palette.panel_bg)
+            .add_modifier(if shown == 0 {
+                Modifier::BOLD
+            } else {
+                Modifier::empty()
+            });
+        if let Some(symbol) = symbol {
+            x = put_segment(buffer, x, area.y, area.right(), symbol, style);
+            x = put_segment(buffer, x, area.y, area.right(), " ", style);
+        }
+        x = put_segment(buffer, x, area.y, area.right(), &text, style);
         shown += 1;
     }
     if omitted && area.right().saturating_sub(x) >= 2 {
@@ -572,14 +602,14 @@ fn render_close_button(buffer: &mut Buffer, area: Rect, palette: &Palette) {
     }
 }
 
-fn mobile_items(
+fn mobile_items<'a>(
     snapshot: &ClientShellSnapshot,
     endpoints: &[ClientShellEndpoint],
     active_endpoint_id: &ClientEndpointId,
-    config: &ClientShellConfig,
+    config: &'a ClientShellConfig,
     selected_workspace_id: Option<&WorkspaceNavigationTarget>,
     content_width: u16,
-) -> Vec<MobileItem> {
+) -> Vec<MobileItem<'a>> {
     let palette = &config.palette;
     let mut items = Vec::new();
     if endpoints.len() > 1 {
@@ -705,7 +735,7 @@ fn mobile_items(
                     Line::from(vec![
                         Span::styled("  ", Style::default().bg(background)),
                         Span::styled(
-                            status_icon(agent.agent_status, config.status_indicators),
+                            status_icon(agent.agent_status, config),
                             Style::default()
                                 .fg(if endpoint.stale() {
                                     palette.overlay0
@@ -837,7 +867,7 @@ fn mobile_items(
                                 .add_modifier(dim),
                         ),
                         Span::styled(
-                            status_icon(workspace.agent_status, config.status_indicators),
+                            status_icon(workspace.agent_status, config),
                             Style::default().fg(status).bg(background).add_modifier(dim),
                         ),
                         Span::styled(" ", Style::default().bg(background)),

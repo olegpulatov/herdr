@@ -89,6 +89,9 @@ const DEFAULT_CONFIG: &str = r##"# herdr configuration
 # selection_bg = "#313244"
 # panel_bg = "reset"
 # accent = "#f5c2e7"
+# tab_active_bg = "#f5c2e7" # selected tab only; defaults to accent
+# tab_active_fg = "#181825" # selected tab text; defaults to panel contrast
+# tab_inactive_fg = "#7f849c" # inactive tab text; independent of pane borders
 # red = "#ff6188"
 # green = "#a6e3a1"
 
@@ -292,6 +295,9 @@ const DEFAULT_CONFIG: &str = r##"# herdr configuration
 # Legacy booleans still parse: true = "auto", false = "off".
 # pane_borders = "auto"
 
+# Pane line stroke: "single", "heavy", or "double"; all use one terminal cell.
+# pane_border_style = "single"
+
 # Draw borders along the outside edge of the pane area.
 # Disable for tmux-style internal splitters without an outside frame.
 # pane_outer_borders = true
@@ -331,9 +337,16 @@ const DEFAULT_CONFIG: &str = r##"# herdr configuration
 # "workspaces" is accepted as an alias for "spaces".
 # agent_panel_sort = "spaces"
 
-# Agent status indicators: "dots" preserves the compact color marks; "symbols" uses
-# distinct static glyphs for blocked, working, done, idle, and unknown states.
+# Agent status indicators: "dots" uses compact marks; "symbols" uses static glyphs.
+# Extra presets (working / idle / done):
+# clear: ↻ / – / ✓; quiet: ⋯ / · / ✓; playback: ▶ / ‖ / ■
+# geometric: ◐ / ◇ / ◆; decorative: ≋ / – / ✦
 # status_indicators = "dots"
+# Optional single-cell glyph overrides apply to any preset.
+# Working examples: ↻ ⟳ ⟲ ↺ ◐ ◑ ◒ ◓ ⋯ » ▸ ▶ ≋ ∿
+# Idle examples: – — · ‖ ∥ ◇ □ ▫ ▱ ◦ ⊘ ∅
+# Done examples: ✓ ✔ √ + ◆ ■ ● ★ ✦ ⊕ ⊙ ⟐
+# status_symbols = { working = "↻", idle = "–", done = "✓" }
 
 # Accent color for highlights, borders, and navigation UI.
 # Accepts: hex (#89b4fa), named colors (cyan, blue, magenta), or rgb(r,g,b)

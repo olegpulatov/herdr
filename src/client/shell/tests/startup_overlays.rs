@@ -1193,6 +1193,45 @@ fn client_settings_preview_restore_and_endpoint_integrations_are_owned_by_overla
     assert!(state.overlay.is_none());
     assert_eq!(state.config.theme_name, original_theme);
     assert_eq!(state.config.palette.accent, original_palette.accent);
+    for (index, preset) in crate::config::StatusIndicatorStyle::ALL
+        .into_iter()
+        .enumerate()
+    {
+        state.config.status_indicators = preset;
+        state.config.status_symbols.working = Some("∿".into());
+        state.open_settings_overlay();
+        let mut outcome = ClientShellInput::default();
+        state.select_settings_section(ClientSettingsSection::Indicators, &mut outcome);
+        assert!(matches!(
+            state.overlay,
+            Some(ClientShellOverlay::Settings(ClientSettingsOverlay {
+                selected,
+                ..
+            })) if selected == index
+        ));
+        state.move_settings_selection(100);
+        assert!(matches!(
+            state.overlay,
+            Some(ClientShellOverlay::Settings(ClientSettingsOverlay {
+                selected: 6,
+                ..
+            }))
+        ));
+        let frame = state.compose(106, 30).expect("seven indicator presets");
+        assert_eq!(state.hits.settings_choices.len(), 7);
+        assert!(frame.cells.iter().any(|cell| cell.symbol == "✦"));
+        let frame = state
+            .compose(106, 18)
+            .expect("selected preset on short screen");
+        assert!(state
+            .hits
+            .settings_choices
+            .iter()
+            .any(|(_, choice)| *choice == 6));
+        assert!(frame.cells.iter().any(|cell| cell.symbol == "✦"));
+        state.cancel_settings_overlay();
+        assert_eq!(state.config.status_symbols.working.as_deref(), Some("∿"));
+    }
 
     state.open_settings_overlay();
     state.compose(106, 30).expect("settings overlay");

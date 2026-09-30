@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+- Added configurable tab colors, pane border styles, and agent status indicator presets with validated custom glyph overrides
+
+### Changed
+- Applied configured tab colors and status indicators across desktop and mobile shell views
 ## [0.9.3] - 2026-09-29
 
 This is a hotfix release for v0.9.2. See the v0.9.2 notes for the full feature release: https://github.com/herdrdev/herdr/releases/tag/v0.9.2

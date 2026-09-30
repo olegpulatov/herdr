@@ -163,8 +163,16 @@ pub(super) fn render_settings_overlay(
                 buffer,
                 content,
                 "agent status indicators",
-                "choose color dots or distinct symbols for each state",
-                &["color dots  ● ● ● ○ ·", "distinct symbols  × ◐ ✓ ○ ·"],
+                "choose preset; custom status_symbols overrides stay active",
+                &[
+                    "color dots  ● ● ● ○ ·",
+                    "distinct symbols  × ◐ ✓ ○ ·",
+                    "clear  ↻ – ✓",
+                    "quiet  ⋯ · ✓",
+                    "playback  ▶ ‖ ■",
+                    "geometric  ◐ ◇ ◆",
+                    "decorative  ≋ – ✦",
+                ],
                 settings.selected,
                 palette,
                 &mut choice_hits,
@@ -283,9 +291,20 @@ fn render_choice_section(
         description,
         Style::default().fg(palette.overlay1).bg(palette.panel_bg),
     );
-    let row_gap = u16::from(choices.len() > 2);
-    for (index, choice) in choices.iter().enumerate() {
-        let y = area.y + 3 + index as u16 * (1 + row_gap);
+    let available_rows = usize::from(area.height.saturating_sub(3));
+    let row_gap = u16::from(
+        choices.len() > 2 && available_rows >= choices.len().saturating_mul(2).saturating_sub(1),
+    );
+    let visible = (available_rows + usize::from(row_gap)) / usize::from(1 + row_gap);
+    let scroll = selected.saturating_sub(visible.saturating_sub(1));
+    for (visible_index, (index, choice)) in choices
+        .iter()
+        .enumerate()
+        .skip(scroll)
+        .take(visible)
+        .enumerate()
+    {
+        let y = area.y + 3 + visible_index as u16 * (1 + row_gap);
         if y >= area.bottom() {
             break;
         }

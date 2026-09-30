@@ -101,6 +101,9 @@ impl ThemeConfig {
 #[serde(default)]
 pub struct CustomThemeColors {
     pub accent: Option<String>,
+    pub tab_active_bg: Option<String>,
+    pub tab_active_fg: Option<String>,
+    pub tab_inactive_fg: Option<String>,
     pub panel_bg: Option<String>,
     pub sidebar_bg: Option<String>,
     pub active_row_bg: Option<String>,
@@ -130,6 +133,9 @@ pub struct CustomThemeColors {
 #[serde(default)]
 pub struct ModeThemeColors {
     pub accent: Option<String>,
+    pub tab_active_bg: Option<String>,
+    pub tab_active_fg: Option<String>,
+    pub tab_inactive_fg: Option<String>,
     pub panel_bg: Option<String>,
     pub sidebar_bg: Option<String>,
     pub active_row_bg: Option<String>,
@@ -298,6 +304,8 @@ sidebar_bg = "#181825"
 active_row_bg = "#313244"
 selection_bg = "#45475a"
 accent = "#ff79c6"
+tab_active_bg = "#22324b"
+tab_inactive_fg = "#666666"
 red = "rgb(255, 85, 85)"
 "##;
         let config: Config = toml::from_str(toml).unwrap();
@@ -308,6 +316,8 @@ red = "rgb(255, 85, 85)"
         assert_eq!(custom.active_row_bg.as_deref(), Some("#313244"));
         assert_eq!(custom.selection_bg.as_deref(), Some("#45475a"));
         assert_eq!(custom.accent.as_deref(), Some("#ff79c6"));
+        assert_eq!(custom.tab_active_bg.as_deref(), Some("#22324b"));
+        assert_eq!(custom.tab_inactive_fg.as_deref(), Some("#666666"));
         assert_eq!(custom.red.as_deref(), Some("rgb(255, 85, 85)"));
         assert!(custom.green.is_none());
     }
@@ -317,26 +327,44 @@ red = "rgb(255, 85, 85)"
         let toml = r##"
 [theme.custom]
 accent = "#010203"
+tab_active_bg = "#22324b"
+tab_active_fg = "#aaaaaa"
+tab_inactive_fg = "#666666"
 
 [theme.custom.light]
 accent = "#040506"
+tab_active_bg = "#33445b"
+tab_active_fg = "#bbbbbb"
+tab_inactive_fg = "#777777"
 text = "#070809"
 selection_bg = "#101112"
 
 [theme.custom.dark]
 panel_bg = "#0a0b0c"
+tab_active_bg = "#11223b"
+tab_active_fg = "#cccccc"
+tab_inactive_fg = "#888888"
 sidebar_bg = "#0d0e0f"
 active_row_bg = "#131415"
 "##;
         let config: Config = toml::from_str(toml).unwrap();
         let custom = config.theme.custom.as_ref().unwrap();
         assert_eq!(custom.accent.as_deref(), Some("#010203"));
+        assert_eq!(custom.tab_active_bg.as_deref(), Some("#22324b"));
+        assert_eq!(custom.tab_active_fg.as_deref(), Some("#aaaaaa"));
+        assert_eq!(custom.tab_inactive_fg.as_deref(), Some("#666666"));
         let light = custom.light.as_ref().unwrap();
         assert_eq!(light.accent.as_deref(), Some("#040506"));
+        assert_eq!(light.tab_active_bg.as_deref(), Some("#33445b"));
+        assert_eq!(light.tab_active_fg.as_deref(), Some("#bbbbbb"));
+        assert_eq!(light.tab_inactive_fg.as_deref(), Some("#777777"));
         assert_eq!(light.text.as_deref(), Some("#070809"));
         assert_eq!(light.selection_bg.as_deref(), Some("#101112"));
         let dark = custom.dark.as_ref().unwrap();
         assert_eq!(dark.panel_bg.as_deref(), Some("#0a0b0c"));
+        assert_eq!(dark.tab_active_bg.as_deref(), Some("#11223b"));
+        assert_eq!(dark.tab_active_fg.as_deref(), Some("#cccccc"));
+        assert_eq!(dark.tab_inactive_fg.as_deref(), Some("#888888"));
         assert_eq!(dark.sidebar_bg.as_deref(), Some("#0d0e0f"));
         assert_eq!(dark.active_row_bg.as_deref(), Some("#131415"));
     }

@@ -403,6 +403,41 @@ fn mobile_background_workspace_uses_its_own_active_tab_status() {
     assert!(text.contains("feature · tab two · 2/2"), "{text}");
     assert!(text.contains("2 · logs"), "{text}");
     assert!(!text.contains("7 · logs"), "{text}");
+    state.mode = ClientShellMode::Terminal;
+    state.config.status_symbols.idle = Some("∥".into());
+    let mut projected = snapshot();
+    for workspace in &mut projected.workspaces {
+        workspace.agent_status = AgentStatus::Idle;
+    }
+    projected.agents.push(ClientShellAgent {
+        pane_id: "pane_1".into(),
+        workspace_id: "ws_1".into(),
+        tab_id: "tab_1".into(),
+        name: Some("idle agent".into()),
+        display_agent: None,
+        agent: Some("pi".into()),
+        title: None,
+        terminal_title: None,
+        terminal_title_stripped: None,
+        agent_status: AgentStatus::Idle,
+        state_change_seq: 1,
+        state_labels: Vec::new(),
+        tokens: Vec::new(),
+        focused: true,
+    });
+    state.set_snapshot(Box::new(projected));
+    let frame = state.compose(44, 20).expect("custom all-idle summary");
+    let text = frame
+        .cells
+        .chunks(frame.width as usize)
+        .map(|row| {
+            row.iter()
+                .map(|cell| cell.symbol.as_str())
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(text.contains("∥ all idle"), "{text}");
 }
 
 #[test]

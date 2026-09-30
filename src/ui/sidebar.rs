@@ -103,16 +103,16 @@ pub(crate) fn agent_panel_entries_from(
     entries
 }
 
-pub(crate) fn resolved_token_spans(
+pub(crate) fn resolved_token_spans<'a>(
     resolved: &[ResolvedToken],
-    state_icon: (&str, Style),
+    state_icon: (&'a str, Style),
     state_text_style: Style,
     workspace_style: Style,
     secondary_style: Style,
     custom_style: Style,
     palette: &Palette,
     max_width: usize,
-) -> Vec<Span<'static>> {
+) -> Vec<Span<'a>> {
     let fixed_widths = resolved
         .iter()
         .map(|token| match &token.kind {
@@ -224,7 +224,7 @@ pub(crate) fn resolved_token_spans(
         }
         match &token.kind {
             ResolvedTokenKind::StateIcon => spans.push(Span::styled(
-                state_icon.0.to_string(),
+                state_icon.0,
                 apply_token_style(state_icon.1, token.style),
             )),
             ResolvedTokenKind::StateText(text) => spans.push(Span::styled(

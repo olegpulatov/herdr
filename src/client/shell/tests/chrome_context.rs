@@ -56,7 +56,7 @@ fn focused_last_overflow_tab_shows_its_full_label() {
         "update cv",
         "nvim",
         "brother",
-        "day organiser",
+        "7",
         "nvim test",
     ];
     projected.tabs = labels
@@ -67,14 +67,30 @@ fn focused_last_overflow_tab_shows_its_full_label() {
             workspace_id: "ws_1".into(),
             number: index + 1,
             label: (*label).into(),
-            custom_label: index > 0,
+            custom_label: index > 0 && index != 6,
             zoomed: false,
             focused: index == 7,
             agent_status: AgentStatus::Idle,
         })
         .collect();
-    let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
-    for number in [8, 7, 8] {
+    let config: Config = toml::from_str(
+        r##"
+[ui]
+accent = "#22324b"
+
+[theme.custom]
+tab_active_bg = "#33445b"
+tab_active_fg = "#aaaaaa"
+tab_inactive_fg = "#666666"
+overlay0 = "#161616"
+"##,
+    )
+    .unwrap();
+    let mut state = ClientShellState::new(ClientShellConfig::from_config(&config));
+    let custom_bg = state.config.palette.tab_active_bg;
+    assert_eq!(custom_bg, Some(ratatui::style::Color::Rgb(51, 68, 91)));
+    for (number, tab_active_bg) in [(8, custom_bg), (7, None), (8, custom_bg)] {
+        state.config.palette.tab_active_bg = tab_active_bg;
         let tab_id = format!("tab_{number}");
         projected.focused_tab_id = Some(tab_id.clone());
         projected.workspaces[0].active_tab_id = tab_id.clone();
@@ -98,6 +114,49 @@ fn focused_last_overflow_tab_shows_its_full_label() {
             .find(|(_, id)| id == &tab_id)
             .expect("focused tab")
             .0;
+        let palette = &state.config.palette;
+        assert_eq!(palette.accent, ratatui::style::Color::Rgb(34, 50, 75));
+        assert_eq!(
+            palette.tab_active_fg,
+            Some(ratatui::style::Color::Rgb(170, 170, 170))
+        );
+        assert_eq!(palette.overlay0, ratatui::style::Color::Rgb(22, 22, 22));
+        if number == 8 {
+            let numeric = state
+                .hits
+                .tabs
+                .iter()
+                .find(|(_, id)| id == "tab_7")
+                .expect("inactive numeric tab remains visible")
+                .0;
+            assert_eq!(
+                frame.cells[(numeric.y * frame.width + numeric.x) as usize].fg,
+                crate::protocol::color_to_u32(ratatui::style::Color::Rgb(102, 102, 102)),
+                "numeric inactive tab uses its independent foreground"
+            );
+        }
+        let expected_bg = crate::protocol::color_to_u32(tab_active_bg.unwrap_or(palette.accent));
+        for x in rect.x..rect.right() {
+            assert_eq!(
+                frame.cells[(rect.y * frame.width + x) as usize].bg,
+                expected_bg,
+                "focused tab background"
+            );
+            assert_eq!(
+                frame.cells[(rect.y * frame.width + x) as usize].fg,
+                crate::protocol::color_to_u32(ratatui::style::Color::Rgb(170, 170, 170)),
+                "focused tab uses its independent foreground"
+            );
+        }
+        for (inactive, id) in &state.hits.tabs {
+            if id != &tab_id {
+                assert_eq!(
+                    frame.cells[(inactive.y * frame.width + inactive.x) as usize].bg,
+                    crate::protocol::color_to_u32(palette.surface0),
+                    "inactive tab background stays unchanged"
+                );
+            }
+        }
         let text = (rect.x..rect.right())
             .map(|x| {
                 frame.cells[(rect.y * frame.width + x) as usize]

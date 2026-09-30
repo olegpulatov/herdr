@@ -1170,6 +1170,14 @@ fn aggregate_agents_use_configured_rows_machine_token_and_status_colors() {
         .content()
         .iter()
         .any(|cell| cell.symbol() == "×" && cell.fg == state.config.palette.red));
+    state.config.status_symbols.idle = Some("∥".into());
+    let frame = state.compose(100, 28).expect("custom idle endpoint icon");
+    assert!(frame.cells.iter().any(|cell| cell.symbol == "∥"));
+    state.sidebar_collapsed = true;
+    let frame = state
+        .compose(100, 28)
+        .expect("collapsed custom endpoint icon");
+    assert!(frame.cells.iter().any(|cell| cell.symbol == "∥"));
 }
 
 #[test]

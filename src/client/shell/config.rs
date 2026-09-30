@@ -125,6 +125,7 @@ impl ClientShellConfig {
             agents: config.ui.sidebar.agents.clone(),
             agent_panel_sort: config.ui.agent_panel_sort,
             status_indicators: config.ui.status_indicators,
+            status_symbols: config.ui.status_symbols.clone(),
             sound_enabled: config.ui.sound.enabled,
             toast_delivery: config.ui.toast.delivery,
             toast_delay_seconds: config.ui.toast.delay_seconds,
@@ -327,6 +328,7 @@ impl ClientShellConfig {
                 self.agents = ui.sidebar.agents.clone();
                 self.agent_panel_sort = ui.agent_panel_sort;
                 self.status_indicators = ui.status_indicators;
+                self.status_symbols = ui.status_symbols.clone();
                 self.sound_enabled = ui.sound.enabled;
                 self.toast_delivery = ui.toast.delivery;
                 self.toast_delay_seconds = ui.toast.delay_seconds;
@@ -458,6 +460,9 @@ mod tests {
         next.ui.tab_bar_position = TabBarPositionConfig::Bottom;
         next.ui.agent_panel_sort = crate::config::AgentPanelSortConfig::Priority;
         next.ui.status_indicators = crate::config::StatusIndicatorStyle::Symbols;
+        next.ui.status_symbols.working = Some("↻".into());
+        next.ui.status_symbols.idle = Some("–".into());
+        next.ui.status_symbols.done = Some("✦".into());
         next.ui.sidebar.agents = toml::from_str("rows = [[{ token = 'machine', rules = [{ equals = 'Local', bold = true }] }]]\nrow_gap = 2").unwrap();
         next.keys.prefix = crate::config::BindingConfig::one("ctrl+a");
 
@@ -474,6 +479,19 @@ mod tests {
             shell.status_indicators,
             crate::config::StatusIndicatorStyle::Symbols
         );
+        assert_eq!(shell.status_symbols, next.ui.status_symbols);
+        assert_eq!(
+            status_icon(crate::api::schema::AgentStatus::Working, &shell),
+            "↻"
+        );
+        assert_eq!(
+            status_icon(crate::api::schema::AgentStatus::Idle, &shell),
+            "–"
+        );
+        assert_eq!(
+            status_icon(crate::api::schema::AgentStatus::Done, &shell),
+            "✦"
+        );
         assert_eq!(shell.agents.row_gap, 2);
         assert_eq!(
             shell.agents.rows[0][0]
@@ -489,10 +507,56 @@ mod tests {
             &["ui".to_owned(), "keys".to_owned()],
         );
         assert_eq!(shell.agents, previous);
+        assert_eq!(shell.status_symbols, next.ui.status_symbols);
         assert_eq!(
             shell.keybinds.prefix,
             vec![(KeyCode::Char('a'), KeyModifiers::CONTROL)]
         );
+        use crate::api::schema::AgentStatus;
+        use crate::config::StatusIndicatorStyle;
+        for (style, working, idle, done) in [
+            (StatusIndicatorStyle::Dots, "●", "○", "●"),
+            (StatusIndicatorStyle::Symbols, "◐", "○", "✓"),
+            (StatusIndicatorStyle::Clear, "↻", "–", "✓"),
+            (StatusIndicatorStyle::Quiet, "⋯", "·", "✓"),
+            (StatusIndicatorStyle::Playback, "▶", "‖", "■"),
+            (StatusIndicatorStyle::Geometric, "◐", "◇", "◆"),
+            (StatusIndicatorStyle::Decorative, "≋", "–", "✦"),
+        ] {
+            let mut next = Config::default();
+            next.ui.status_indicators = style;
+            shell.apply_live_config(&next, &[], &[]);
+            assert_eq!(status_icon(AgentStatus::Working, &shell), working);
+            assert_eq!(status_icon(AgentStatus::Idle, &shell), idle);
+            assert_eq!(status_icon(AgentStatus::Done, &shell), done);
+            assert_eq!(
+                status_icon(AgentStatus::Blocked, &shell),
+                if style == StatusIndicatorStyle::Dots {
+                    "●"
+                } else {
+                    "×"
+                }
+            );
+            assert_eq!(status_icon(AgentStatus::Unknown, &shell), "·");
+        }
+        for (status, state, glyphs) in [
+            (
+                AgentStatus::Working,
+                "working",
+                "↻ ⟳ ⟲ ↺ ◐ ◑ ◒ ◓ ⋯ » ▸ ▶ ≋ ∿",
+            ),
+            (AgentStatus::Idle, "idle", "– — · ‖ ∥ ◇ □ ▫ ▱ ◦ ⊘ ∅"),
+            (AgentStatus::Done, "done", "✓ ✔ √ + ◆ ■ ● ★ ✦ ⊕ ⊙ ⟐"),
+        ] {
+            for glyph in glyphs.split_whitespace() {
+                let config: Config =
+                    toml::from_str(&format!("[ui.status_symbols]\n{state} = '{glyph}'")).unwrap();
+                let initial = ClientShellConfig::from_config(&config);
+                assert_eq!(status_icon(status, &initial), glyph);
+                shell.apply_live_config(&config, &[], &[]);
+                assert_eq!(status_icon(status, &shell), glyph);
+            }
+        }
     }
 
     #[test]
